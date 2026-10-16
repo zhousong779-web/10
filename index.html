@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>小说阅读</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #F1ECE1;
+    --paper-panel: #E9E2D3;
+    --ink: #23262E;
+    --ink-soft: #5B5A54;
+    --jade: #4A6656;
+    --seal: #8C3D2E;
+    --line: #D8CFBC;
+    --radius: 3px;
+    box-sizing: border-box;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      --paper: #1B1D22; --paper-panel: #22252B; --ink: #E9E5DA;
+      --ink-soft: #9B9890; --jade: #7FA491; --seal: #C0685A; --line: #34373E;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #1B1D22; --paper-panel: #22252B; --ink: #E9E5DA;
+    --ink-soft: #9B9890; --jade: #7FA491; --seal: #C0685A; --line: #34373E;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-padding-top: env(safe-area-inset-top, 0px); height: 100%; }
+  body {
+    margin: 0; min-height: 100%;
+    background: var(--paper); color: var(--ink);
+    font-family: "Noto Sans SC", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background .25s ease, color .25s ease;
+  }
+
+  header {
+    padding: 2.2rem 1.5rem 1.4rem;
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+  }
+  .mark { width: 10px; height: 10px; background: var(--seal); border-radius: 1px; margin: 0 auto .9rem; }
+  h1 {
+    margin: 0;
+    font-family: "Noto Serif SC", serif;
+    font-weight: 700;
+    font-size: clamp(1.5rem, 4vw, 2rem);
+    letter-spacing: .04em;
+  }
+  .byline { margin-top: .5rem; font-size: .85rem; color: var(--ink-soft); }
+
+  .controls {
+    max-width: 760px; margin: 0 auto; padding: 1rem 1.5rem;
+    display: flex; flex-wrap: wrap; gap: .6rem;
+    align-items: center; justify-content: space-between;
+  }
+  .chapter-select {
+    flex: 1 1 auto; min-width: 160px;
+    font-family: "Noto Sans SC", sans-serif; font-size: .92rem;
+    color: var(--ink); background: var(--paper-panel);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: .5rem .7rem;
+  }
+  .btn-group { display: flex; gap: .4rem; }
+  button.tool {
+    font-family: "Noto Sans SC", sans-serif; font-size: .85rem;
+    background: var(--paper-panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: .5rem .7rem; cursor: pointer;
+  }
+  button.tool:hover { border-color: var(--jade); }
+  button.tool:focus-visible, .chapter-select:focus-visible {
+    outline: 2px solid var(--jade); outline-offset: 1px;
+  }
+
+  main { max-width: 700px; margin: 0 auto; padding: 1rem 1.5rem 5rem; }
+  .chap-title-display {
+    font-family: "Noto Serif SC", serif; font-weight: 600; font-size: 1.3rem;
+    margin: 1.4rem 0 1.6rem; padding-bottom: .8rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .chap-text-display {
+    font-family: "Noto Serif SC", serif;
+    font-size: var(--fs, 1.08rem);
+    line-height: 2.05;
+    letter-spacing: .02em;
+    color: var(--ink);
+    white-space: pre-line;
+    text-align: justify;
+  }
+
+  nav.pager {
+    max-width: 700px; margin: 2rem auto 0; padding: 0 1.5rem;
+    display: flex; justify-content: space-between; gap: 1rem;
+  }
+  nav.pager button {
+    flex: 1; font-family: "Noto Sans SC", sans-serif; font-size: .9rem;
+    background: var(--paper-panel); color: var(--ink);
+    border: 1px solid var(--line); border-radius: var(--radius);
+    padding: .8rem 1rem; cursor: pointer;
+  }
+  nav.pager button:disabled { opacity: .4; cursor: default; }
+  nav.pager button:not(:disabled):hover { border-color: var(--jade); }
+
+  footer { text-align: center; font-size: .78rem; color: var(--ink-soft); padding: 2rem 1rem 3rem; }
+
+  /* 原始章节数据不显示在页面上，只用来被脚本读取 */
+  #source { display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="mark"></div>
+  <h1>暴力重构</h1>
+  <p class="byline">徐中承</p>
+</header>
+
+<div class="controls">
+  <select class="chapter-select" id="chapterSelect" aria-label="选择章节"></select>
+  <div class="btn-group">
+    <button class="tool" id="fontMinus" aria-label="缩小字号">A－</button>
+    <button class="tool" id="fontPlus" aria-label="放大字号">A＋</button>
+    <button class="tool" id="themeToggle" aria-label="切换深浅色">☾／☀</button>
+  </div>
+</div>
+
+<main>
+  <h2 class="chap-title-display" id="chapterTitle"></h2>
+  <div class="chap-text-display" id="content"></div>
+</main>
+
+<nav class="pager">
+  <button id="prevBtn">← 上一章</button>
+  <button id="nextBtn">下一章 →</button>
+</nav>
+
+<footer>原文来自微博：徐中承_
+同主角晋江：《臣服万人迷实录》
+废文同剧情：《暴力重构》
+本网页仅为供浏览的小说阅读器</footer>
+
+
+
+<div id="source">
+
+  <div class="chapter">
+    <h2>第十章</h2>
+    <p>
+       　　他们几乎很难感触不到扶主越发灼烫的体温，那暴乱的精神力如同凌冽的针芒向他们刺来。
+
+　　两股精神力趁虚而入，安抚愈发紧绷暴动的脉络，却无一被接纳。
+
+　　魏扶铮眉宇攒紧，血管急速流涌的血液穿透四肢百骸。
+
+　　他深吸一口气，探手往新的针管一摸，陡然顿住，筋骨紧绷的手攥成厚重的拳头。
+
+　　零星理智拽回痛楚逼出的冲动。
+
+　　密密麻麻的棉针嵌在大脑寸寸褶皱皮层似的，稍一动头，都好痛。
+
+　　这次真的是最后一次。
+
+　　莹亮得诡异的药水又一次映在余岁壹的眼中。
+
+　　他们总觉得扶主将针头狠怼进皮肤后，甚至巴不得把管柱也一同狠狠塞进去。
+
+　　余岁壹突然看见那右臂的黑蛇刺青异动一瞬，“这是什么？”
+
+　　而余年想拽过魏扶铮攥着针管的手，却被一拳打退，鼻血横流。
+
+　　魏扶铮双眼猩红，脸上却没什么表情。
+
+　　最后一刻度的药水隐没颈侧血管。
+
+　　几乎是同一瞬间，蛇鳞刺青浮光跃闪，粗硕的蛇身赋予了生命般，渐行而动，穿梭花束，诡谲伺机向胸膛蜿蜒爬去。
+
+　　余岁壹看到了右胸上已经直勾勾盯着他的竖瞳。
+
+　　刺青样式的黑蛇吐舌嘶鸣，在魏扶铮骤然仰头气喘时，破肤而出。
+
+　　闪着粼粼寒光的蛇头牵悬在胸前，摇摆虎眈，剩下粗硕的蛇身仍为黑墨嵌于皮肤之下。
+
+　　阴厉而瘆人的针瞳阴诡逼视而来。
+
+　　魏扶铮随意伸手，攥锁蛇头。伴着一声凄厉嘶叫，黑蛇宛若长鞭，被魏扶铮尽数抽出肤下，黑蛇顺势缠上他手臂、环住他的腰身。
+
+　　他面色苍白，起身，半抱着黑蛇，任白絮顺着腿根淌下，拿起衣服往浴室走。
+
+　　余年最先回神，跑来攥住他的手腕，“我想起来了。我好像，在哪见过你。”
+
+　　魏扶铮把门打开，低眸看着被攥的手腕。
+
+　　余年凝噎，连忙松手，“抱歉……”
+
+　　他不知道使出什么表情，就看见门后，扶主的助理与扶主擦肩而入。
+
+　　“这场地是我们出钱租的，就麻烦二位先离开。”
+
+　　余岁壹匆匆裹上衣物，追上去的意图很快被那老男人的驱赶示意下遏制。
+
+　　“麻烦二位赶紧离开吧，当时已经说好了规定。”
+
+　　兄弟二人异常沉默，在驱赶下很快无声离开。
+
+　　踩着魏扶铮的脚印，助理晋威进了浴室。
+
+　　浴池早已放好热水，魏扶铮浸在里头，晋威就在一边给他搓洗衣物，“现在不早了，明天是不是正式上课？学校的衣服都给你整理好了，等会就在这睡觉。”
+
+　　“你在哪找的人？”
+
+　　热水氤氲的雾气浸湿了发丝，利落往后疏拢，三七分固。
+
+　　“他们给的资料不是这个城市的，怎么了？”晋威正给他柔洗贴身衣物。
+
+　　顿了顿，他又说：“应该不用担心和这些人遇上，我们的直播间人气一直不怎么高。”
+
+　　“扶铮，你们什么时候开学实操考试？”
+
+　　“……后天，还是大后天？忘了。”
+
+　　“我看你的精神力已经稳定了，这几天好好准备考试，”晋威别开自己那挡眼的灰发，“最近也别直播了，知道了吗？”
+
+　　“嗯。”
+
+　　“困了？”
+
+　　晋威皱眉，放下手中的衣服，凑近撑额敛眼的魏扶铮。
+
+　　“别睡，先洗完，要不要我给你洗？”
+
+　　魏扶铮掀开倦怠的眼睑，换了只手臂撑着沉重的头。
+
+　　晋威一瞥到他眼白间猩红血丝，神情一凛。
+
+　　“是累了还是什么？”
+
+　　“没有，我洗完了。”
+
+　　魏扶铮起身，哗啦啦热水顺身流瀑而下，披上浴巾。
+
+　　晋威强硬拽过他手臂，又没见皮肤里扎有针孔，最后看了眼正在肩颈肤下悠闲游走的黑蛇，松心道：“这几天没扎针吧？”
+
+　　“我困了。”
+
+　　晋威来来回回检查他的手腕皮肤，可确实没见到针孔。
+
+　　“睡吧，我给你洗完衣服再休息。”
+
+　　第二日，宇宙时间六点整，魏扶铮穿着深蓝制服，胸前三行金属排扣整齐扣合，被医务所许医生传唤至办公室。
+
+　　许医生将六份学生资料递给魏扶铮，按照精神力匹配度从高到低排列。左屈秦的资料在最后一页。
+
+　　“学院考虑学生的意愿，这六个人是你的精神抚慰候选，你可以在里面任选一人，后面很大可能也会作为你所在的联考小队的第三名成员。”许医生又问，“你看起来很累。”
+
+　　魏扶铮看过匹配度最高与最低的两份资料，最终停留在最后一页。
+
+　　“左屈秦。”
+
+　　许医生推眼镜，微笑道：“是没休息好太累了吧？我劝你好好想想，这次专人是要跟随你一起进去考试系统，选匹配度高的，才能让你更好在考试中脱颖而出。”
+
+　　“就他。”
+
+　　昨晚那阵暴动平息后，精神力应该能稳定几天，并且他和左屈秦相互了解，没必要为了匹配度另选一人。
+
+　　“魏同学，你有更好的选择，总不能因为看着左同学背后的院长吧？”
+
+　　魏扶铮抬眼看向他。
+
+　　“这样吧，你不如再考虑考虑，今天晚上十一点前，你随时可以改变主意。”
+
+　　宇宙时间六点三十分，魏扶铮在左屈秦的宿舍楼下等待，医院传来简讯。
+
+　　——魏芙凝家属您好，魏芙凝于宇宙时间2号的疗程已顺利结束，请您于今晚八点前办理出院手续。
+
+　　一只手忽然揽上他的脖颈。
+
+　　魏扶铮关闭简讯，顺势与左屈秦一同走向报告厅，把不久前的事情告诉了他。
+
+　　“你真的选我了？”左屈秦揽紧他，扭捏道，“六个人里面选一个？我们家大少爷来翻牌子了。”
+
+　　魏扶铮不回他。
+
+　　“是不是我比较有姿色，排在第一个了？”
+
+　　魏扶铮说：“你在最后一个。”
+
+　　“……哦，你怎么那么爱我？那我们刚好在一个队伍。”
+
+　　“我爱你还需要什么来证明吗？”魏扶铮莫名哼笑一声。
+
+　　左屈秦捂住发烫的眼：“还不是那些人胡说。你每天在楼下等我的事情都被其他人看到了。”
+
+　　“那我躲起来？”
+
+　　左屈秦觉得自己不能总和魏扶铮这样说话。简直一句接一句往他心弦上撩。
+
+　　“……他们说要踩我上位，你管不管？”
+
+　　“你是左家少爷，应该没有谁能比得过你吧。”
+
+　　说着，他们与远处走来的霍永息对上目光。
+
+　　霍永息懒懒向二人招呼一声，便在他们身后若即若离跟着。
+
+　　左屈秦耳语忧心道，“你眼里的红血丝好重，昨晚没睡吗？”
+
+　　“或许。”魏扶铮眨了眨发酸的眼睛。
+
+　　开学典礼在即，全校学生大批向报告厅涌入。
+
+　　魏扶铮很快和他们分开，留在后台准备演讲。
+
+　　令他意外的是，他在后台看见了观众席上，左屈秦的座位临近霍永息。
+
+　　全校A班学生按专业分坐前排，厅内座位因制服的颜色而被渲染得像褪色的海洋，在高台对面的尽头，是属于F班淡蓝的制服。
+
+　　“第二项，由学生代表——航空航天学院，战斗与飞行专业A班魏扶铮上台发表演讲。”
+
+　　射灯扫过，只剩演讲人之上的顶灯铺光。
+
+　　被发胶固定的三七背头，在白光的反射下显得严谨而锋锐，正如胸前冷硬的学院徽章。
+
+　　魏扶铮稍抬眼，极快看了眼领导席中位的女士后，便启唇开始演讲。
+
+　　台下的霍永息发现了一件很有意思的现象。
+
+　　坐在他右手边的不知名同学还在追问魏同学投下的若有若无的目光究竟是什么意思。霍永息便再次作势转头要和专注聆听的左屈秦说些什么。
+
+　　果然，台上冷苛的代表再度盯向他。
+
+　　只要霍永息回望，只能看见矜贵又目空一切的代表。
+
+　　不知道哪个专业的A班学生窃窃私语传到霍永息耳边
+
+　　“我怎么感觉男神一直在看你啊？”
+
+　　甜腻的女声道：“你胡说什么呀，才不是……”
+
+　　“别装了，前几天那封情书，就是你写的吧？”
+
+　　“你们不要再乱传了，我和他没有什么的呀，而且他都有男友了，我一点都不配。”
+
+　　“别啊，你那么好看，肯定比这些大男人强，不试试怎么知道？对了，那情书的结果怎么样？”
+
+　　“哼，别说了，让那个姓左的贱人撕了，真的是，仗着他老妈是院长就在这胡作非为，真以为我们不敢对他怎么样？”
+
+　　霍永息转头，“左屈秦，你知道你男友在论坛上的事情吗？”
+
+　　左屈秦目不斜视，“什么论坛？”他似乎是思考了片刻，“是有人研究魏扶铮的学习方式吗？很正常，这群眼高手低的东西根本不会在自己身上找问题。”
+
+　　“不是这个。”
+
+　　“那是什么？”
+
+　　“算了，”霍永息若有所思道，“没什么。”
+
+　　左屈秦不回，指间却渐渐开始摩挲起来。
+
+　　顺应报告厅轰鸣的掌声，演讲代表下台。
+
+　　坐在领导席中位的钟峡女士的目光紧锁在他身上。
+
+　　在彻底进入帷幕的遮挡后，魏扶铮偏头，最后和她撞上眼神。
+
+　　典礼结束后，魏扶铮在台下主动找上她。
+
+　　“钟院长。”魏扶铮敬礼。
+
+　　短发利落的钟院长颔首，笑得微不可察：“扶铮，我刚好要找你。”
+
+　　“明天开始的全城联考，准备得怎么样了？”
+
+　　“全城？”
+
+　　“嗯，这次不只是学院内，是城区所有的学院联考。”她上下审视一番后，道，“听说你让屈秦作你的精神抚慰人？”
+
+　　“是的。”
+
+　　钟峡笑得勉强：“你太惯着他了，考试主要靠个人能力，你要多为自己考虑。”她眸光一动，又道，“今天你什么时候有时间，就来我的办公室一趟。关于明天的考试，还是要麻烦你一些事情。”
+
+　　话音刚落，周遭学生离场的背景音闯入了两道清晰而急促的脚步。
+
+　　左屈秦与霍永息行礼，“院长。”
+
+　　魏扶铮淡扫霍永息。
+
+　　钟峡敛下笑弧，“嗯，今日可以去实操室预先练习准备，明天开始的考试实战有些难度，好好表现。”
+
+　　魏扶铮抽出被左屈秦暗中攥住的手。
+
+　　“左屈秦，你和我来一下。”
+
+　　钟峡突然叫走左屈秦，魏扶铮留在原地只是因为霍永息的突然拦截。
+
+　　“看来你还是担心我胡说八道啊？”
+
+　　“你能说出什么有用的东西？”
+
+　　霍永息逼近一步，咬牙切齿道：“至少我知道，联考不是你们两个在校内随便玩玩。选错抚慰人，真出了事，可没人心疼你啊。”
+
+　　魏扶铮看了他几秒，而后低头盯向挡在他面前的腿。
+
+　　霍永息正欲再说，小腿骨却因猛然被踹来的力道痛得他冷汗直流。
+
+　　长靴远去的铿铿声。
+
+　　钟峡的话一直在魏扶铮耳边萦绕不下。
+
+　　————
+
+　　与此同时。
+
+　　“左屈秦，你一辈子都要靠别人混在A班吗？”
+
+　　左屈秦垂头不语，额角接过劈头而来的玻璃杯。
+
+　　钟峡点烟，语气平平淡淡：“真是废物，你要是个人成绩再那么惨不忍睹，我别的什么都不管，你给我去B班，怎么样？”
+
+　　“我没有靠别人，我一直都有在努力……我个人成绩，也有班级的前十名啊。”
+
+　　“我像你这么大的时候哪项不是第一名？你知道别人怎么说你的？”钟峡吐雾，“实战成绩一塌糊涂，光会理论有什么用？我不可能一直让魏扶铮看着你。”
+
+　　“我会努力的，虽然我这次还是和他一个队伍，但是、但是我会证明我自己的，我……”
+
+　　钟峡敲桌子打断他的话：“明天那几日的考试你给我认真点。”
+
+　　“什么？”
+
+　　“明天开始的联考是全球赛事的选拔，城区分到了三个名额，这次考试表现优秀的能拿到下个月全球赛事的直邀。”
+
+　　钟峡微笑：“你——要不然给我拿到名额，要不然给我滚去下等B班，听懂了吗？”
+
+　　……
+
+　　“听懂了，”
+
+　　航飞专业实战模拟一号间中，魏扶铮抱臂斜靠在墙边，“全球赛事的直邀？”
+
+　　悉数交代完的左屈秦正佩戴脑机，有气无力道：“是啊……等会，等会和你说，我这边已经接入了。”
+
+　　魏扶铮见他躺进舱内，便在一旁操作屏幕。
+
+　　左屈秦的身体各项状况，以及系统内的空域情况、战机情况等等尽数展示在眼前。
+
+　　盯着向一万米高空攀升的数据，魏扶铮没管左屈秦没完没了的念叨。
+
+　　全球赛事，他以前还真没有了解太多。
+
+　　三个名额。左屈秦居然告诉了他。
+
+　　魏扶铮的思绪还未收回，口中已经道：“你被敌机锁死六点了。”
+
+　　不过注意到热焰弹已循环发射，魏扶铮就没说话了。
+
+　　“*的，这群模拟异种看着真特么恶心啊。”左屈秦破口大骂，“我被尾追了！”
+
+　　魏扶铮说：“你的能量不如对面，跑不掉也进不了稳盘。”
+
+　　“这系统乱出前置条件搞我？”
+
+　　魏扶铮敛神，冷静滑动屏幕观察数据状况，“冷静点，先往下俯冲规避它的窗口。”
+
+　　说完，魏扶铮又扶额，“你不要再无视自身情况剧烈机动了。已经严重过载了，你的精神力扛不住的。”
+
+　　下一瞬，魏扶铮就见舱内的左屈秦猛然弹坐起。
+
+　　【13G过载，已弹出系统空间。左屈秦同学，您的训练用时为五分钟，仅优于全院5%的同学。】
+
+　　左屈秦眼巴巴望着他，“你会嫌弃我吗？”
+
+　　“你不用向我证明，我都知道。”
+
+　　“……”
+
+　　魏扶铮走近，重新给他调试设备，“你刚才的话还没说完。”
+
+　　“他们说，只要参与就有八十万奖金，获得名次，一百万起步。”左屈秦无所谓道，“听说王室的人会观赛。”
+
+　　魏扶铮的手一顿。在此之前，他只在魏芙凝的医用账单上数过零的个数。
+
+　　左屈秦并无所觉：“说校内的还好啊。整个城区，不知道多少人去抢三个名额，我怎么可能做得到？”
+
+　　“幸好我们一个队伍，其实我对你而言，还是有点用处的是不是？”左屈秦轻快道。
+
+　　魏扶铮垂眼盯着难掩焦灼的左屈秦。
+
+　　左屈秦的精神力仍贴附在他身上，温吞而微弱，几乎没有起到太大作用。
+
+　　匹配度确实太低了，如果明天开始的全城联考真关系到全球赛事选拔，这点安抚效果恐怕不够。
+
+　　魏扶铮重新调出方才的训练数据。左屈秦的实战表现和精神力匹配是两回事，但明天的考试不会给他们分开解决问题的机会。
+
+　　一支考试队伍固定三人，左屈秦和他分在一个队伍，现在刚好还差一位人选。
+
+　　或许他得想个办法。
+    </p>
+  </div>
+
+  
+
+</div>
+
+
+<script>
+(function () {
+  const chapters = Array.from(document.querySelectorAll('#source .chapter')).map(el => ({
+    title: (el.querySelector('h2')?.textContent || '').trim(),
+    text: (el.querySelector('p')?.textContent || '').trim()
+  }));
+
+  const select = document.getElementById('chapterSelect');
+  const chapterTitleEl = document.getElementById('chapterTitle');
+  const contentEl = document.getElementById('content');
+  const prevBtn = document.getElementById('prevBtn');
+  const nextBtn = document.getElementById('nextBtn');
+  const fontPlus = document.getElementById('fontPlus');
+  const fontMinus = document.getElementById('fontMinus');
+  const themeToggle = document.getElementById('themeToggle');
+
+  chapters.forEach((ch, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = ch.title || ('第 ' + (i + 1) + ' 章');
+    select.appendChild(opt);
+  });
+
+  let current = 0;
+  let fontSize = 1.08;
+
+  function render() {
+    const ch = chapters[current];
+    if (!ch) return;
+    chapterTitleEl.textContent = ch.title;
+    contentEl.textContent = ch.text;
+    select.value = current;
+    prevBtn.disabled = current === 0;
+    nextBtn.disabled = current === chapters.length - 1;
+    document.documentElement.style.setProperty('--fs', fontSize + 'rem');
+    window.scrollTo(0, 0);
+  }
+
+  select.addEventListener('change', () => { current = Number(select.value); render(); });
+  prevBtn.addEventListener('click', () => { if (current > 0) { current--; render(); } });
+  nextBtn.addEventListener('click', () => { if (current < chapters.length - 1) { current++; render(); } });
+  fontPlus.addEventListener('click', () => { fontSize = Math.min(1.6, fontSize + 0.08); render(); });
+  fontMinus.addEventListener('click', () => { fontSize = Math.max(0.85, fontSize - 0.08); render(); });
+
+  themeToggle.addEventListener('click', () => {
+    const root = document.documentElement;
+    const cur = root.getAttribute('data-theme');
+    if (cur === 'dark') root.setAttribute('data-theme', 'light');
+    else if (cur === 'light') root.removeAttribute('data-theme');
+    else root.setAttribute('data-theme', 'dark');
+  });
+
+  render();
+})();
+</script>
+
+</body>
+</html>
